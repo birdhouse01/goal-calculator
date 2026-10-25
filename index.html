@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Agent Goal Calculator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&family=Public+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: one centered column — six-step worksheet, model toggle at step 2, payoff panel at the end */
+:root{
+  color-scheme:light;
+  --paper:#FAF7F2;
+  --card:#FFFDF9;
+  --ink:#101B2D;
+  --body:#465060;
+  --line:#E2DCCE;
+  --gold:#E8B744;
+  --gold-deep:#B0893B;
+  --panel:#101B2D;
+  --panel-text:#FAF7F2;
+  --panel-soft:#C9CFDA;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0C1422; --card:#152036; --ink:#F2EFE8; --body:#AEB7C6;
+    --line:#2A3650; --gold:#E8B744; --gold-deep:#D9A93E;
+    --panel:#060B14; --panel-text:#FAF7F2; --panel-soft:#AEB7C6;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:'Public Sans',Verdana,sans-serif;margin:0;padding-top:max(40px, env(safe-area-inset-top, 0px));padding-bottom:max(72px, env(safe-area-inset-bottom, 0px));padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-deep);margin:0}
+h1{font-family:Oswald,'Trebuchet MS',sans-serif;font-weight:600;font-size:clamp(34px,7vw,52px);line-height:1.05;text-transform:uppercase;margin:6px 0 0;text-wrap:balance}
+.lede{font-size:17px;line-height:1.55;color:var(--body);margin:10px 0 0;max-width:62ch}
+.step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:14px}
+.step-head{display:flex;gap:14px;align-items:baseline}
+.num{font-family:Oswald,'Trebuchet MS',sans-serif;font-size:22px;font-weight:600;color:var(--gold-deep);min-width:34px}
+.step h2{font-size:19px;font-weight:700;margin:0}
+.hint{font-size:14.5px;line-height:1.5;color:var(--body);margin:0}
+.fields{display:flex;gap:16px;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:150px}
+.field label{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--body)}
+.inwrap{display:flex;align-items:center;gap:8px;background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:10px 14px}
+.inwrap:focus-within{border-color:var(--gold-deep)}
+.inwrap span{font-size:16px;color:var(--body);font-weight:600}
+input[type=number]{border:none;background:transparent;color:var(--ink);font-family:'Public Sans',Verdana,sans-serif;font-size:19px;font-weight:600;width:100%;outline:none;font-variant-numeric:tabular-nums}
+.mini{font-size:15px;color:var(--body)}
+.mini b{color:var(--ink);font-variant-numeric:tabular-nums}
+.models{display:flex;gap:12px;flex-wrap:wrap}
+.model{flex:1;min-width:230px;text-align:left;background:var(--paper);border:2px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;cursor:pointer;font-family:'Public Sans',Verdana,sans-serif;color:var(--ink)}
+.model[aria-pressed="true"]{border-color:var(--gold-deep);background:var(--card);box-shadow:0 2px 10px rgba(16,27,45,.08)}
+.model .m-name{font-size:16px;font-weight:700}
+.model .m-split{font-family:Oswald,'Trebuchet MS',sans-serif;font-size:24px;font-weight:600;color:var(--gold-deep);font-variant-numeric:tabular-nums}
+.model .m-note{font-size:13px;line-height:1.45;color:var(--body)}
+.model:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.chainrow{display:flex;gap:10px;flex-wrap:wrap}
+.chip{flex:1;min-width:130px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.chip .v{font-family:Oswald,'Trebuchet MS',sans-serif;font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.chip .l{font-size:12.5px;color:var(--body);letter-spacing:.05em;text-transform:uppercase;font-weight:700}
+.payoff{background:var(--panel);color:var(--panel-text);border-radius:16px;padding:34px 28px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.payoff .label{font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin:0}
+.payoff .big{font-family:Oswald,'Trebuchet MS',sans-serif;font-size:clamp(64px,16vw,110px);font-weight:600;line-height:1;color:var(--gold);margin:0;font-variant-numeric:tabular-nums}
+.payoff .sub{font-size:17px;line-height:1.5;color:var(--panel-soft);margin:0;max-width:52ch}
+.payoff .sub b{color:var(--panel-text)}
+.payoff .compare{font-size:15px;color:var(--panel-soft);margin:4px 0 0;font-variant-numeric:tabular-nums}
+.payoff .compare b{color:var(--gold)}
+.footer{font-size:13.5px;line-height:1.55;color:var(--body);text-align:center}
+@media (max-width:460px){ .fields{flex-direction:column} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Business Planning &amp; Goal Setting · Birdsong × Linney</p>
+    <h1>Your business runs on one number.</h1>
+    <p class="lede">Start with what you keep. Work backwards to Monday morning. The numbers below are the workshop example — replace them with yours and watch line&nbsp;6 change.</p>
+  </header>
+
+  <section class="step">
+    <div class="step-head"><span class="num">01</span><h2>The keep number</h2></div>
+    <p class="hint">What you want to bring home <b>after taxes</b> this year. Real number, not a brave one.</p>
+    <div class="fields">
+      <div class="field"><label for="keep">Take-home goal</label>
+        <div class="inwrap"><span>$</span><input type="number" id="keep" value="120000" min="0" step="5000" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label for="tax">Effective tax rate</label>
+        <div class="inwrap"><input type="number" id="tax" value="20" min="0" max="60" step="1" inputmode="numeric"><span>%</span></div>
+      </div>
+    </div>
+    <p class="mini">Pre-tax profit your business must produce: <b id="profit">$150,000</b></p>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="num">02</span><h2>What kind of business pays you?</h2></div>
+    <p class="hint">Profit isn't GCI. Every GCI dollar loses a slice to <b>cost of sale</b> (splits to specialists, referral fees, client concessions — it scales with every deal) and a slice to <b>overhead</b> (lead gen, salaries, tech, office, insurance — it runs whether you close or not). Pick a model, then tune the sliders to your reality.</p>
+    <div class="models">
+      <button type="button" class="model" id="m-lean" aria-pressed="true">
+        <span class="m-name">Lean solo — low cost</span>
+        <span class="m-split">70¢ net per $1</span>
+        <span class="m-note">You do the work yourself: ~10¢ cost of sale, ~20¢ overhead. Cheap, but your hours are the ceiling.</span>
+      </button>
+      <button type="button" class="model" id="m-team" aria-pressed="false">
+        <span class="m-name">Leveraged team — MREA-style</span>
+        <span class="m-split">40¢ net per $1</span>
+        <span class="m-note">The Millionaire Real Estate Agent shape: ~30¢ cost of sale (specialist splits), ~30¢ overhead. Costs more per dollar, scales past your hours.</span>
+      </button>
+    </div>
+    <div class="fields">
+      <div class="field"><label for="cos">Cost of sale</label>
+        <div class="inwrap"><input type="number" id="cos" value="10" min="0" max="60" step="1" inputmode="numeric"><span>% of GCI</span></div>
+      </div>
+      <div class="field"><label for="oh">Overhead</label>
+        <div class="inwrap"><input type="number" id="oh" value="20" min="0" max="60" step="1" inputmode="numeric"><span>% of GCI</span></div>
+      </div>
+    </div>
+    <p class="mini">You keep <b id="margin">70¢</b> of every GCI dollar &rarr; GCI needed: <b id="gci">$214,286</b></p>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="num">03</span><h2>Your real per-side number</h2></div>
+    <p class="hint">Last 12 months of closed GCI ÷ sides — <b>gross</b>, before any splits (splits already live in cost of sale above). The book, not the number in your head.</p>
+    <div class="fields">
+      <div class="field"><label for="perside">Avg gross GCI per side (yours)</label>
+        <div class="inwrap"><span>$</span><input type="number" id="perside" value="10000" min="500" step="500" inputmode="numeric"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="num">04</span><h2>Sides needed</h2></div>
+    <p class="mini">GCI ÷ per-side = <b id="sides">22 sides</b> this year. Not “as many as possible” — this many.</p>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="num">05</span><h2>The activity chain</h2></div>
+    <p class="hint">You can't <i>do</i> a closing — only the activities that cause one. Use your ratios, or start here and tighten with real data.</p>
+    <div class="fields">
+      <div class="field"><label for="appts">Appointments per closing</label>
+        <div class="inwrap"><input type="number" id="appts" value="2" min="1" step="0.5" inputmode="decimal"></div>
+      </div>
+      <div class="field"><label for="convos">Conversations per appointment</label>
+        <div class="inwrap"><input type="number" id="convos" value="10" min="1" step="1" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label for="attempts">Contact attempts per conversation</label>
+        <div class="inwrap"><input type="number" id="attempts" value="5" min="1" step="1" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label for="weeks">Working weeks (minus vacations)</label>
+        <div class="inwrap"><input type="number" id="weeks" value="48" min="20" max="52" step="1" inputmode="numeric"></div>
+      </div>
+    </div>
+    <p class="hint">A contact attempt is a dial, text, DM, or door — most don't become conversations. Warm sphere runs ~3 attempts per conversation; cold can run 10+.</p>
+    <div class="chainrow">
+      <div class="chip"><span class="v" id="c-sides">22</span><span class="l">closings</span></div>
+      <div class="chip"><span class="v" id="c-appts">44</span><span class="l">appointments</span></div>
+      <div class="chip"><span class="v" id="c-convos">440</span><span class="l">conversations / yr</span></div>
+      <div class="chip"><span class="v" id="c-attempts">2,200</span><span class="l">attempts / yr</span></div>
+    </div>
+  </section>
+
+  <section class="payoff">
+    <p class="label">06 · The one number</p>
+    <p class="big" id="weekly">10</p>
+    <p class="sub"><b>Real conversations a week.</b> That's the whole plan — <span id="recap">a $120,000 take-home is 10 two-way conversations about real estate, every week</span>. Everything else on the to-do list is somebody else's emergency.</p>
+    <p class="sub" id="daily">To get them: <b>46 contact attempts a week — 10 a day</b> in your morning block, five days a week.</p>
+    <p class="compare" id="compare">Run lean: <b>10/wk</b> · Run the MREA team model: <b>17/wk</b> — leverage costs conversations before it buys you time.</p>
+  </section>
+
+  <p class="footer">Model presets are the commonly taught shapes — lean solo (~70¢ net per GCI dollar) and the Millionaire Real Estate Agent team economics (~40¢ net). Your own percentages beat both.<br>A “real conversation” is a two-way exchange about real estate with someone who knows your name.<br>Patrick Birdsong × Austin Linney · (512) 768-0225</p>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const money=n=>'$'+Math.round(n).toLocaleString('en-US');
+  const LEAN={cos:10,oh:20}, TEAM={cos:30,oh:30};
+
+  function weeklyFor(cosPct,ohPct){
+    const keep=+$('keep').value||0, tax=Math.min(Math.max(+$('tax').value||0,0),60)/100;
+    const per=Math.max(+$('perside').value||1,1), apc=+$('appts').value||1,
+          cpa=+$('convos').value||1, apc2=Math.max(+$('attempts').value||1,1),
+          wks=Math.max(+$('weeks').value||48,1);
+    const profit=keep/(1-tax);
+    const margin=Math.max(1-(cosPct+ohPct)/100,0.05);
+    const gci=profit/margin;
+    const sides=Math.ceil(gci/per);
+    const appts=Math.ceil(sides*apc);
+    const convos=Math.ceil(appts*cpa);
+    const tries=Math.ceil(convos*apc2);
+    const triesWk=Math.ceil(tries/wks);
+    return {profit,margin,gci,sides,appts,convos,tries,triesWk,triesDay:Math.ceil(triesWk/5),weekly:Math.ceil(convos/wks)};
+  }
+
+  function calc(){
+    const cos=Math.min(Math.max(+$('cos').value||0,0),60), oh=Math.min(Math.max(+$('oh').value||0,0),60);
+    const r=weeklyFor(cos,oh);
+    const lean=weeklyFor(LEAN.cos,LEAN.oh), team=weeklyFor(TEAM.cos,TEAM.oh);
+    $('profit').textContent=money(r.profit);
+    $('margin').textContent=Math.round(r.margin*100)+'¢';
+    $('gci').textContent=money(r.gci);
+    $('sides').textContent=r.sides+' sides';
+    $('c-sides').textContent=r.sides;
+    $('c-appts').textContent=r.appts.toLocaleString('en-US');
+    $('c-convos').textContent=r.convos.toLocaleString('en-US');
+    $('c-attempts').textContent=r.tries.toLocaleString('en-US');
+    $('weekly').textContent=r.weekly;
+    $('recap').textContent='a '+money(+$('keep').value||0)+' take-home is '+r.weekly+' two-way conversations about real estate, every week';
+    $('daily').innerHTML='To get them: <b>'+r.triesWk.toLocaleString('en-US')+' contact attempts a week &mdash; '+r.triesDay+' a day</b> in your morning block, five days a week.';
+    $('compare').innerHTML='Run lean: <b>'+lean.weekly+'/wk</b> · Run the MREA team model: <b>'+team.weekly+'/wk</b> — leverage costs conversations before it buys you time.';
+    const isLean=cos<=((LEAN.cos+TEAM.cos)/2) && oh<=((LEAN.oh+TEAM.oh)/2);
+    $('m-lean').setAttribute('aria-pressed', String(isLean));
+    $('m-team').setAttribute('aria-pressed', String(!isLean));
+  }
+
+  $('m-lean').addEventListener('click',()=>{$('cos').value=LEAN.cos;$('oh').value=LEAN.oh;calc();});
+  $('m-team').addEventListener('click',()=>{$('cos').value=TEAM.cos;$('oh').value=TEAM.oh;calc();});
+  ['keep','tax','cos','oh','perside','appts','convos','attempts','weeks'].forEach(id=>$(id).addEventListener('input',calc));
+  calc();
+})();
+</script>
+</body>
+</html>
